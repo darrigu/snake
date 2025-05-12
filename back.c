@@ -1,5 +1,4 @@
-typedef unsigned int u32;
-typedef int s32;
+#include "./back.h"
 
 #ifndef NULL
 #define NULL ((void*)0)
@@ -11,9 +10,6 @@ typedef int s32;
 #define ASSERT(cond, message) do { if (!(cond)) front_panic(__FILE__, __LINE__, message); } while (0)
 #define UNREACHABLE() front_panic(__FILE__, __LINE__, "unreachable")
 
-#define FACTOR 70
-#define WIDTH (16*FACTOR)
-#define HEIGHT (9*FACTOR)
 #define CELL_SIZE FACTOR
 #define COLS (WIDTH/CELL_SIZE)
 #define ROWS (HEIGHT/CELL_SIZE)
@@ -22,13 +18,9 @@ typedef int s32;
 #define CELL1_COLOR BACKGROUND_COLOR
 #define CELL2_COLOR 0xFF79D781
 #define SNAKE_BODY_COLOR 0xFF2E2E1E
+#define APPLE_COLOR 0xFFA88BF3
 
 #define STEP_INTERVAL 0.1f
-
-void front_fill_rect(s32 x, s32 y, s32 w, s32 h, u32 color);
-void front_panic(const char* file_path, s32 line, const char* message);
-
-#define SNAKE_CAP (ROWS*COLS)
 
 typedef enum {
   DIR_RIGHT,
@@ -37,6 +29,18 @@ typedef enum {
   DIR_DOWN,
   COUNT_DIRS,
 } Dir;
+
+Dir dir_opposite(Dir dir) {
+  switch (dir) {
+  case DIR_RIGHT: return DIR_LEFT;
+  case DIR_LEFT:  return DIR_RIGHT;
+  case DIR_UP:    return DIR_DOWN;
+  case DIR_DOWN:  return DIR_UP;
+  case COUNT_DIRS:
+  default: UNREACHABLE();
+  }
+  return 0;
+}
 
 typedef struct {
   s32 x, y;
@@ -49,6 +53,7 @@ static const Cell dir_vecs[COUNT_DIRS] = {
   [DIR_DOWN]  = {.y =  1},
 };
 
+#define SNAKE_CAP (ROWS*COLS)
 typedef struct {
   Cell body[SNAKE_CAP];
   u32 begin;
@@ -57,8 +62,10 @@ typedef struct {
 
 typedef struct {
   Snake snake;
+  Cell apple;
   Dir dir;
-  float step_cooldown;
+  Dir next_dir;
+  f32 step_cooldown;
   s32 one_time;
 } Game;
 
@@ -160,12 +167,21 @@ static void game_step_snake(void) {
 void game_render(void) {
   background_render();
   snake_render(&game.snake);
+  front_fill_rect(game.apple.x*CELL_SIZE, game.apple.y*CELL_SIZE, CELL_SIZE, CELL_SIZE, APPLE_COLOR);
 }
 
-void game_update(float dt) {
+void game_update(f32 dt) {
   game.step_cooldown -= dt;
   if (game.step_cooldown <= 0.0f) {
+    if (dir_opposite(game.dir) != game.next_dir) {
+      game.dir = game.next_dir;
+    }
     game_step_snake();
     game.step_cooldown = STEP_INTERVAL;
   }
+
+  if (front_keydown(KEY_UP))    game.next_dir = DIR_UP;
+  if (front_keydown(KEY_LEFT))  game.next_dir = DIR_LEFT;
+  if (front_keydown(KEY_DOWN))  game.next_dir = DIR_DOWN;
+  if (front_keydown(KEY_RIGHT)) game.next_dir = DIR_RIGHT;
 }
