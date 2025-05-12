@@ -46,13 +46,6 @@ typedef struct {
   s32 x, y;
 } Cell;
 
-static const Cell dir_vecs[COUNT_DIRS] = {
-  [DIR_RIGHT] = {.x =  1},
-  [DIR_UP]    = {.y = -1},
-  [DIR_LEFT]  = {.x = -1},
-  [DIR_DOWN]  = {.y =  1},
-};
-
 #define SNAKE_CAP (ROWS*COLS)
 typedef struct {
   Cell body[SNAKE_CAP];
