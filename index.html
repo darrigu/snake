@@ -3,6 +3,29 @@
   <head>
     <meta charset="utf-8">
     <title>Snake</title>
+    <style>
+      body {
+        margin: 0;
+      }
+
+      @media (min-aspect-ratio: 16/9) {
+        canvas {
+          position: absolute;
+          height: 100%;
+          left: 50%;
+          transform: translate(-50%, 0%)
+        }
+      }
+
+      @media not (min-aspect-ratio: 16/9) {
+        canvas {
+          position: absolute;
+          width: 100%;
+          top: 50%;
+          transform: translate(0%, -50%)
+        }
+      }
+    </style>
   </head>
   <body>
     <canvas id="game"></canvas>
