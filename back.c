@@ -62,13 +62,20 @@ typedef struct {
   u32 size;
 } Snake;
 
+typedef enum {
+  STATE_GAMEPLAY,
+  STATE_GAMEOVER,
+} State;
+
 typedef struct {
   Snake snake;
   Cell apple;
   Dir dir;
   Dir next_dir;
   f32 step_cooldown;
-  s32 one_time;
+  b32 one_time;
+  State state;
+  // TODO: score
 } Game;
 
 static Game game = {
@@ -82,14 +89,6 @@ static Game game = {
   },
   .dir = DIR_RIGHT,
 };
-
-int game_width(void) {
-  return WIDTH;
-}
-
-int game_height(void) {
-  return HEIGHT;
-}
 
 static void snake_render(Snake* snake) {
   for (u32 offset = 0; offset < snake->size; ++offset) {
@@ -159,12 +158,6 @@ void snake_pop_tail(Snake* snake) {
   snake->size -= 1;
 }
 
-void game_render(void) {
-  background_render();
-  front_fill_rect(game.apple.x*CELL_SIZE, game.apple.y*CELL_SIZE, CELL_SIZE, CELL_SIZE, APPLE_COLOR);
-  snake_render(&game.snake);
-}
-
 b32 cell_eq(const Cell* a, const Cell* b) {
   return a->x == b->x && a->y == b->y;
 }
@@ -186,28 +179,60 @@ void random_apple(void) {
   } while (is_cell_snake_body(&game.apple));
 }
 
-void game_update(f32 dt) {
-  game.step_cooldown -= dt;
-  if (game.step_cooldown <= 0.0f) {
-    if (dir_opposite(game.dir) != game.next_dir) {
-      game.dir = game.next_dir;
-    }
+int game_width(void) {
+  return WIDTH;
+}
 
-    Cell* head = snake_head(&game.snake);
-    Cell next_head = step_cell(*head, game.dir);
-    snake_push_head(&game.snake, next_head);
+int game_height(void) {
+  return HEIGHT;
+}
 
-    if (cell_eq(&game.apple, head)) {
-      random_apple();
-    } else {
-      snake_pop_tail(&game.snake);
-    }
-    
-    game.step_cooldown = STEP_INTERVAL;
+void game_render(void) {
+  background_render();
+  front_fill_rect(game.apple.x*CELL_SIZE, game.apple.y*CELL_SIZE, CELL_SIZE, CELL_SIZE, APPLE_COLOR);
+  snake_render(&game.snake);
+
+  if (game.state == STATE_GAMEOVER) {
+    // TODO
   }
+}
 
-  if (front_keydown(KEY_UP))    game.next_dir = DIR_UP;
-  if (front_keydown(KEY_LEFT))  game.next_dir = DIR_LEFT;
-  if (front_keydown(KEY_DOWN))  game.next_dir = DIR_DOWN;
-  if (front_keydown(KEY_RIGHT)) game.next_dir = DIR_RIGHT;
+void game_update(f32 dt) {
+  switch (game.state) {
+  case STATE_GAMEPLAY: {
+    game.step_cooldown -= dt;
+    if (game.step_cooldown <= 0.0f) {
+      if (dir_opposite(game.dir) != game.next_dir) {
+        game.dir = game.next_dir;
+      }
+
+      Cell* head = snake_head(&game.snake);
+      Cell next_head = step_cell(*head, game.dir);
+
+      if (cell_eq(&game.apple, head)) {
+        snake_push_head(&game.snake, next_head);
+        random_apple();
+      } else if (is_cell_snake_body(&next_head)) {
+        game.state = STATE_GAMEOVER;
+        return;
+      } else {
+        snake_push_head(&game.snake, next_head);
+        snake_pop_tail(&game.snake);
+      }
+    
+      game.step_cooldown = STEP_INTERVAL;
+    }
+
+    if (front_keydown(KEY_UP))    game.next_dir = DIR_UP;
+    if (front_keydown(KEY_LEFT))  game.next_dir = DIR_LEFT;
+    if (front_keydown(KEY_DOWN))  game.next_dir = DIR_DOWN;
+    if (front_keydown(KEY_RIGHT)) game.next_dir = DIR_RIGHT;
+  } break;
+
+  case STATE_GAMEOVER: {
+    // TODO
+  } break;
+
+  default: UNREACHABLE();
+  }
 }
