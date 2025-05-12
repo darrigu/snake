@@ -5,7 +5,7 @@
 #endif
 
 #define TRUE 1
-#define FALSE 1
+#define FALSE 0
 
 #define ASSERT(cond, message) do { if (!(cond)) front_panic(__FILE__, __LINE__, message); } while (0)
 #define UNREACHABLE() front_panic(__FILE__, __LINE__, "unreachable")
@@ -21,6 +21,15 @@
 #define APPLE_COLOR 0xFFA88BF3
 
 #define STEP_INTERVAL 0.1f
+
+#define RAND_A 6364136223846793005
+#define RAND_C 1442695040888963407
+
+static u32 rand(void) {
+  static u64 rand_state = 0;
+  rand_state = rand_state*RAND_A + RAND_C;
+  return (rand_state >> 32)&0xFF;
+}
 
 typedef enum {
   DIR_RIGHT,
@@ -150,17 +159,31 @@ void snake_pop_tail(Snake* snake) {
   snake->size -= 1;
 }
 
-static void game_step_snake(void) {
-  Cell* head = snake_head(&game.snake);
-  Cell next_head = step_cell(*head, game.dir);
-  snake_push_head(&game.snake, next_head);
-  snake_pop_tail(&game.snake);
-}
-
 void game_render(void) {
   background_render();
-  snake_render(&game.snake);
   front_fill_rect(game.apple.x*CELL_SIZE, game.apple.y*CELL_SIZE, CELL_SIZE, CELL_SIZE, APPLE_COLOR);
+  snake_render(&game.snake);
+}
+
+b32 cell_eq(const Cell* a, const Cell* b) {
+  return a->x == b->x && a->y == b->y;
+}
+
+b32 is_cell_snake_body(const Cell* cell) {
+  for (u32 offset = 0; offset < game.snake.size; offset++) {
+    u32 index = (game.snake.begin + offset)%SNAKE_CAP;
+    if (cell_eq(&game.snake.body[index], cell)) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+void random_apple(void) {
+  do {
+    game.apple.x = rand()%COLS;
+    game.apple.y = rand()%ROWS;
+  } while (is_cell_snake_body(&game.apple));
 }
 
 void game_update(f32 dt) {
@@ -169,7 +192,17 @@ void game_update(f32 dt) {
     if (dir_opposite(game.dir) != game.next_dir) {
       game.dir = game.next_dir;
     }
-    game_step_snake();
+
+    Cell* head = snake_head(&game.snake);
+    Cell next_head = step_cell(*head, game.dir);
+    snake_push_head(&game.snake, next_head);
+
+    if (cell_eq(&game.apple, head)) {
+      random_apple();
+    } else {
+      snake_pop_tail(&game.snake);
+    }
+    
     game.step_cooldown = STEP_INTERVAL;
   }
 
