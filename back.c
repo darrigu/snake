@@ -1,6 +1,16 @@
 typedef unsigned int u32;
 typedef int s32;
 
+#ifndef NULL
+#define NULL ((void*)0)
+#endif
+
+#define TRUE 1
+#define FALSE 1
+
+#define ASSERT(cond, message) do { if (!(cond)) front_panic(__FILE__, __LINE__, message); } while (0)
+#define UNREACHABLE() front_panic(__FILE__, __LINE__, "unreachable")
+
 #define FACTOR 70
 #define WIDTH (16*FACTOR)
 #define HEIGHT (9*FACTOR)
@@ -8,14 +18,15 @@ typedef int s32;
 #define COLS (WIDTH/CELL_SIZE)
 #define ROWS (HEIGHT/CELL_SIZE)
 
-#define BACKGROUND_COLOR 0xFF2E1E1E
+#define BACKGROUND_COLOR 0xFFA1E3A6
 #define CELL1_COLOR BACKGROUND_COLOR
-#define CELL2_COLOR 0xFFF4D6CD
-#define SNAKE_BODY_COLOR 0xFFA1E3A6
+#define CELL2_COLOR 0xFF79D781
+#define SNAKE_BODY_COLOR 0xFF2E2E1E
 
 #define STEP_INTERVAL 0.1f
 
 void front_fill_rect(s32 x, s32 y, s32 w, s32 h, u32 color);
+void front_panic(const char* file_path, s32 line, const char* message);
 
 #define SNAKE_CAP (ROWS*COLS)
 
@@ -48,6 +59,7 @@ typedef struct {
   Snake snake;
   Dir dir;
   float step_cooldown;
+  s32 one_time;
 } Game;
 
 static Game game = {
@@ -92,8 +104,57 @@ static void background_render(void) {
   }
 }
 
+Cell* snake_head(Snake* snake) {
+  ASSERT(snake->size > 0, "snake is empty");
+  u32 index = (snake->begin + snake->size - 1)%SNAKE_CAP;
+  return &snake->body[index];
+}
+
+s32 emod(s32 a, s32 b) {
+  return (a%b + b)%b;
+}
+
+Cell step_cell(Cell head, Dir dir) {
+  switch (dir) {
+  case DIR_RIGHT:
+    head.x += 1;
+    break;
+  case DIR_UP:
+    head.y -= 1;
+    break;
+  case DIR_LEFT:
+    head.x -= 1;
+    break;
+  case DIR_DOWN:
+    head.y += 1;
+    break;
+  case COUNT_DIRS:
+  default: UNREACHABLE();
+  }
+
+  head.x = emod(head.x, COLS);
+  head.y = emod(head.y, ROWS);
+  return head;
+}
+
+void snake_push_head(Snake* snake, Cell head) {
+  ASSERT(snake->size < SNAKE_CAP, "snake overflow");
+  u32 index = (snake->begin + snake->size)%SNAKE_CAP;
+  snake->body[index] = head;
+  snake->size += 1;
+}
+
+void snake_pop_tail(Snake* snake) {
+  ASSERT(snake->size > 0, "snake underflow");
+  snake->begin = (snake->begin + 1)%SNAKE_CAP;
+  snake->size -= 1;
+}
+
 static void game_step_snake(void) {
-  // TODO
+  Cell* head = snake_head(&game.snake);
+  Cell next_head = step_cell(*head, game.dir);
+  snake_push_head(&game.snake, next_head);
+  snake_pop_tail(&game.snake);
 }
 
 void game_render(void) {
